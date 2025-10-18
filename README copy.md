@@ -22,3 +22,4 @@
 2. Install dependencies:
    ```bash
    pip install dbt-bigquery google-cloud-bigquery streamlit pandas plotly
+   
