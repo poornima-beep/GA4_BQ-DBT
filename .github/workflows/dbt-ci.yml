@@ -1,0 +1,65 @@
+name: dbt BigQuery CI/CD
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  dbt-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      
+      - name: Install dbt-bigquery
+        run: pip install dbt-bigquery
+
+      
+      - name: Set up GCP credentials
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: $HOME/keyfile.json
+        run: |
+          echo '${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}' > $HOME/keyfile.json
+          echo " GCP keyfile created at $HOME/keyfile.json"
+
+      
+      - name: Create profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<'EOF'
+          ga4_attribution:
+            target: dev
+            outputs:
+              dev:
+                type: bigquery
+                method: service-account
+                keyfile: /home/runner/keyfile.json
+                project: arcane-text-472313-v2
+                dataset: ga4_attribution_demo
+                threads: 4
+                location: US
+          EOF
+          echo "✅ profiles.yml created successfully"
+
+     
+      - name: Run dbt debug
+        working-directory: ga4_attribution
+        run: dbt debug
+
+      
+      - name: Run dbt build (run + test)
+        working-directory: ga4_attribution
+        run: |
+          dbt deps
+          dbt build
